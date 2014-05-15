@@ -4,14 +4,25 @@ var clickInfo = {};
 clickInfo.userHasClicked = false;
 var score = 0;
 var riftCam;
-var RIFT = false;
+var RIFT = true;
 var monster;
+
+var raycaster 
+var enemyContainer;
+var controls, crossHair;
+var line;
+var cameraContainer;
+var debugLine;
+var scene, camera, renderer;
+var enemies = [];
+
 function init() {
 
 	initThree();
 
 	if (RIFT) {
 		riftCam = new THREE.OculusRiftEffect(renderer);
+		camera.position.y = 10;
 	} else {
 		addMouseControls();
 	}
@@ -23,7 +34,7 @@ function init() {
 	enemyContainer = new THREE.Object3D();
 	scene.add(enemyContainer);
 	enemyContainer.y = 10;
-	
+
 	// for (x = 0; x < 10; x ++) {
 	// 	var enemyCube = makeCubeBlue(10);
 	// 	enemyCube.position.x = Math.sin(Math.random()*100)*30
@@ -32,27 +43,35 @@ function init() {
 	// 	enemyCube.name = "ENEMY"
 	// 	enemyContainer.add(enemyCube);
 	// }
+
 	var zeroPoint = makeCubeGreen(.1);
 	enemyContainer.add(zeroPoint);
 
 	raycaster = new THREE.Raycaster();
 	raycaster.name = "raycaster";
 
-	var light = new THREE.AmbientLight( 0xffffff, 10 ); // soft white light
+	var light = new THREE.AmbientLight( 0xffffff, 10 );
 	scene.add( light );
 
 	addStats(document.body);
 
-	//INIT BRIDGE
 	// loadModel("model/steve3d/steve.js")
 	// loadModel("model/tyrant_js/morphtest1.js")
 	// loadModel("model/horse/horse.js")
 	
+	var land = new LandScape();
+	land.setScene(scene)
+	land.init();
+
+	spawnMonster();
+
+	render();
+}
+
+function spawnMonster() {
 	monster = new Monster();
 	monster.setScene(enemyContainer);
 	monster.init();
-
-	render();
 }
 
 function makeCubeBlue(size) {
@@ -63,6 +82,7 @@ function makeCubeBlue(size) {
 
 	return cube;
 }
+
 function makeCubeGreen(size) {
 	var geometry = new THREE.BoxGeometry(size,size,size);
 	var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
@@ -73,9 +93,15 @@ function makeCubeGreen(size) {
 }
 
 function makeSky() {
-	var imagePrefix = "img/sky/";
-	var directions  = ["xpos", "xneg", "ypos", "yneg", "zpos", "zneg"];
+	var imagePrefix = "img/skyNew/";
+	// var directions  = ["xpos", "xneg", "ypos", "yneg", "zpos", "zneg"];
 	var imageSuffix = ".png";
+
+	// var imagePrefix = "img/skyNew/";
+	var directions  = ["xpos", "xneg", "ypos", "yneg", "zpos", "zneg"];
+	// var imageSuffix = ".jpg";
+
+
 	var skyGeometry = new THREE.CubeGeometry( 5000, 5000, 5000 );	
 	skyGeometry.name = "skyGEP";
 
@@ -91,9 +117,16 @@ function makeSky() {
 	scene.add( skyBox );
 }
 
-var line;
+var countTarget = 140;
+var currentCount = 0;
 function render() {
-	// console.log("render");
+	currentCount++;
+
+	if (currentCount == countTarget) {
+		currentCount = 0;
+		// monster = new Monster();
+		spawnMonster();
+	} 
 
 	stats.update();
 	if (!RIFT) controls.update();
@@ -107,34 +140,23 @@ function render() {
 
 		if (RIFT) {
 			//get direction, apply camera rotation to vector to get directions
-
 			var cameraRotation = camera.rotation;
-
-			// var vector = new THREE.Vector3( 0, 0, -1 );
-			
 		    var rayCastDirection = new THREE.Vector3( 0, 0, -1 );
 		    rayCastDirection.applyEuler(cameraRotation);
 
 			rayCastDirection.normalize();
 
-			var c = new THREE.Vector3();
-			c = c.copy(camera.position);
-			c.z += 2;
+			var worldCameraPos = camera.position;
 
-			var worldCameraPos = c;//camera.position;
-
-			console.log("cX:"+c.x + " cY:"+c.y + " cZ:"+c.z);
-
-			console.log("rX:"+rayCastDirection.x + " rY:"+rayCastDirection.y + " rZ:"+rayCastDirection.z);
-			console.log("crX:"+cameraRotation.x + " crY:"+cameraRotation.y + " crZ:"+cameraRotation.z);
-			// c.x += 5;
+			// console.log("cX:"+c.x + " cY:"+c.y + " cZ:"+c.z);
+			// console.log("rX:"+rayCastDirection.x + " rY:"+rayCastDirection.y + " rZ:"+rayCastDirection.z);
+			// console.log("crX:"+cameraRotation.x + " crY:"+cameraRotation.y + " crZ:"+cameraRotation.z);
 			
 			crossHair.position = rayCastDirection;
-			// b = new THREE.Vector3(b.x*10, b.y*10, b.z*10);
-			// drawDebugLine(c, rayCastDirection);
+			
+			// drawDebugLine(worldCameraPos, rayCastDirection);
 			
 		} else {
-
 			//////////////////////////////////////////////////////
 			//////////////////////////////////////////////////////
 			// cacluate the direction the user is looking
@@ -157,22 +179,19 @@ function render() {
 			//normalize
 		    rayCastDirection.normalize()
 		}
-	    //debyg line
+	    //debug line
 	    // drawDebugLine(worldCameraPos, rayCastDirection);
 
 		//update raycast
 	    raycaster.set(worldCameraPos, rayCastDirection);
+
 	    // Ask the raycaster for intersects with all objects in the scene:dw
 	    // (The second arguments means "recursive")
 	    var intersects = raycaster.intersectObject(enemyContainer, true);
 
-		console.log("INTERSECTIONs "+intersects.length);
-
+		// console.log("INTERSECTIONs "+intersects.length);
 		for (x = 0; x < intersects.length; x++){
-			console.log(x +" : ",intersects[x].object);
-			// intersects[x].object.material.color.r = 1;
 			intersects[x].object.control.kill();
-			// enemyContainer.remove(intersects[x].object);
 			score += 10;
 	    }
 	}
@@ -181,7 +200,6 @@ function render() {
 	
 	if (RIFT) riftCam.render(scene, camera); 
 	else renderer.render(scene, camera);
-
 }
 
 function addStats(displayContainer) {
@@ -193,7 +211,6 @@ function addStats(displayContainer) {
 	displayContainer.appendChild( stats.domElement );
 }
 
-var debugLine;
 function drawDebugLine(start, end) {
 	// console.log("start x:"+start.x+" y:"+start.y+" z:"+start.z);
 	// console.log("end x:"+end.x+" y:"+end.y+" z:"+end.z);
@@ -226,16 +243,13 @@ document.body.addEventListener('click', function (evt) {
 	clickInfo.userHasClicked = true;
 	clickInfo.x = evt.clientX;
 	clickInfo.y = evt.clientY;
-
 }, false);
 
+document.body.addEventListener('keydown', function (evt) {
+	// console.log("onkeydown");
+	clickInfo.userHasClicked = true;
+}, false);
 
-// document.body.addEventListener('keydown', function (evt) {
-// 	console.log("onkeydown");
-// 	clickInfo.userHasClicked = true;
-// }, false);
-
-var scene, camera, renderer;
 function initThree() {
 	//THREE JS //////////////
 	scene = new THREE.Scene();
@@ -249,30 +263,13 @@ function initThree() {
 	document.body.appendChild( renderer.domElement );
 }
 
-var raycaster 
-var enemyContainer;
-var controls, crossHair;
 function addMouseControls() {
 	controls = new THREE.PointerLockControls( camera );
 	controls.name = "controls";
 	scene.add( controls.getObject() );
 	controls.enabled = true;
-
-	//CREATE CUBE FOR CROSS HAIR
-	// var geometry = new THREE.BoxGeometry(.1,.1,.1);
-	// var material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-	// var cube = new THREE.Mesh( geometry, material );
-	// cube.name = "cubeRed";
-	
-	// crossHair = new THREE.Object3D();
-	// crossHair.name = "crossHair";
-	// crossHair.add(cube);
-	// crossHair.position.z = -10;
-	// scene.add(crossHair)
-	// controls.camera().add( crossHair );
 }
 
-var cameraContainer;
 function AddCrossHair() {
 	//CREATE CUBE FOR CROSS HAIR
 	var geometry = new THREE.BoxGeometry(.1,.1,.1);
@@ -287,106 +284,14 @@ function AddCrossHair() {
 	
 
 	if (RIFT) {
-		// cameraContainer = new THREE.Object3D();
 		scene.add(crossHair)
-		// cameraContainer.add(camera);
-		// camera.add(crossHair);
-		// camera.position.set(0,0,100)
 
 	} else {
 		controls.camera().add( crossHair );
 	}
 }
-
-////////////////////////////////////
-// model loading
-// function loadModel(modelLocation){
-// 	//load the model
-// 	var jsonLoader = new THREE.JSONLoader();
-// 	jsonLoader.load( modelLocation, addModelToScene );
-// }
-
-// // var prevTime = Date.now();
-// var steve, animation;
-// var MESH_SCALE = 10;
-// function addModelToScene( geometry, materials ) 
-// {
-// 	var mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x606060, morphTargets: true } ) );
-// 	mesh.scale.set(MESH_SCALE, MESH_SCALE, MESH_SCALE);
-// 	scene.add( mesh );
-
-// 	animation = new THREE.MorphAnimation( mesh );
-// 	animation.play();
-// 	mesh.position.set(0,0,-200);
-
-// 	// tweenMonster(mesh);
-// 	return ;
-
-
-// 	// console.log("geometry "+geometry);
-// 	// console.log(materials);
-	 
-// 	// var material = new THREE.MeshFaceMaterial( materials );
-// 	// material.morphTargets = true;
-// 	// steve = new THREE.Mesh(geometry, material );
-// 	// steve.scale.set(.1,.1,.1);
-	
-// 	// scene.add( steve );
-// }
-
-// function tweenMonster(tweenTarget) {
-// 	console.log(tweenTarget)
-// 	var actualZPos= tweenTarget.position.z;
-// 	var currentZPos = { zPos: tweenTarget.position.z };
-// 	var targetZPos
-
-//      tween = new TWEEN.Tween(currentZPos)
-//       .to(targetZPos, 1000)
-//       .onUpdate(function() {
-//         // Calculate the difference between current frame number and where we want to be:
-//         var difference = Math.abs(currentZPos.zPos - actualZPos);
-//         actualZPos = currentZPos.zPos;
-//         // console.log("TWEEN");
-//         // Moving in -Z direction:
-//         tweenTarget.translateZ(-difference);
-//       }).start();
-// }
-// function handleComplete() {
-//     //Tween complete
-// }
-
-
-var skinnedMesh;
-// function loadModel() {
-// 	var loader = new THREE.JSONLoader;
-// 	var animation;
-
-// 	loader.load('./model.js', function (geometry, materials) {
-// 		skinnedMesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials));
-// 		skinnedMesh.position.y = 50;
-// 		skinnedMesh.scale.set(15, 15, 15);
-// 		skinnedMesh.name = "model";
-// 		scene.add(skinnedMesh);
-
-// 		animate(skinnedMesh);
-// 	});
-// }
-function animate(skinnedMesh) {
-    var materials = skinnedMesh.material.materials;
- 
-    for (var k in materials) {
-        materials[k].skinning = true;
-        console.log("materials[k] "+materials[k]);
-    }
- 
-    THREE.AnimationHandler.add(skinnedMesh.geometry.animation);
-    animation = new THREE.Animation(skinnedMesh, "ArmatureAction", THREE.AnimationHandler.CATMULLROM);
-    animation.play();
-}
-
 ////////////////////////////////////////////////////////////////////////////////////
-function makeTextSprite( message, parameters )
-{
+function makeTextSprite( message, parameters ) {
 	if ( parameters === undefined ) parameters = {};
 	
 	var fontface = parameters.hasOwnProperty("fontface") ? 
@@ -441,9 +346,7 @@ function makeTextSprite( message, parameters )
 	return sprite;	
 }
 
-
-init();	
-
+init();
 ////////////////////////////////////////////////////////////////////////////////////
 //// OCULUS INIT //////////////////////////////////////////
 var bridge = new OculusBridge({
@@ -451,24 +354,14 @@ var bridge = new OculusBridge({
     "onOrientationUpdate" : bridgeOrientationUpdated,
     // "onConfigUpdate"      : bridgeConfigUpdated,
     "onConnect" : function() { 
-        console.log("we are connected!");
+        // console.log("we are connected!");
     },
     "onDisconnect" : function() {
-        console.log("good bye Oculus.");
+        // console.log("good bye Oculus.");
     },
     "onConfigUpdate" : function(config) {
-        console.log("Field of view: " + config.FOV);
+        // console.log("Field of view: " + config.FOV);
     }
-    /*,
-    "onOrientationUpdate" : function(quatValues){
-    	bridgeOrientationUpdated(quatValues);
-        // var values = [quatValues.x, quatValues.y, quatValues.z, quatValues.w];
-        // console.log("Orientation: " + values.join(", "));
-    },
-    "onAccelerationUpdate" : function(accelValues){
-        var values = [accelValues.x, accelValues.y, accelValues.z];
-        // console.log("Acceleration: " + values.join(", "));
-    }*/
 });
 
 function bridgeOrientationUpdated(quatValues) {

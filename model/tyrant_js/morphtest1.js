@@ -34,6 +34,8 @@
 		"mapBumpWrap" : ["repeat", "repeat"],
 		"mapLight" : "tyrant_d.png",
 		"mapLightWrap" : ["repeat", "repeat"],
+		"morphTargets" : true,
+		"morphNormals" : true,
 		"shading" : "Lambert",
 		"specularCoef" : 100,
 		"transparency" : 1.0,
