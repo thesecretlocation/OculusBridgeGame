@@ -4,7 +4,8 @@ var clickInfo = {};
 clickInfo.userHasClicked = false;
 var score = 0;
 var riftCam;
-var RIFT = true;
+var RIFT = false;
+var monster;
 function init() {
 
 	initThree();
@@ -22,31 +23,37 @@ function init() {
 	enemyContainer = new THREE.Object3D();
 	scene.add(enemyContainer);
 	enemyContainer.y = 10;
-
-	for (x = 0; x < 10; x ++) {
-		var enemyCube = makeCubeBlue(10);
-		enemyCube.position.x = Math.sin(Math.random()*100)*30
-		enemyCube.position.y = Math.sin(Math.random()*100)*30
-		enemyCube.position.z = Math.sin(Math.random()*100)*30
-		enemyCube.name = "ENEMY"
-		enemyContainer.add(enemyCube);
-	}
+	
+	// for (x = 0; x < 10; x ++) {
+	// 	var enemyCube = makeCubeBlue(10);
+	// 	enemyCube.position.x = Math.sin(Math.random()*100)*30
+	// 	enemyCube.position.y = Math.sin(Math.random()*100)*30
+	// 	enemyCube.position.z = Math.sin(Math.random()*100)*30
+	// 	enemyCube.name = "ENEMY"
+	// 	enemyContainer.add(enemyCube);
+	// }
 	var zeroPoint = makeCubeGreen(.1);
 	enemyContainer.add(zeroPoint);
 
 	raycaster = new THREE.Raycaster();
 	raycaster.name = "raycaster";
 
-	var light = new THREE.AmbientLight( 0xffffff, 1 ); // soft white light
+	var light = new THREE.AmbientLight( 0xffffff, 10 ); // soft white light
 	scene.add( light );
 
 	addStats(document.body);
 
 	//INIT BRIDGE
+	// loadModel("model/steve3d/steve.js")
+	// loadModel("model/tyrant_js/morphtest1.js")
+	// loadModel("model/horse/horse.js")
 	
+	monster = new Monster();
+	monster.setScene(enemyContainer);
+	monster.init();
+
 	render();
 }
-
 
 function makeCubeBlue(size) {
 	var geometry = new THREE.BoxGeometry(size,size,size);
@@ -84,22 +91,6 @@ function makeSky() {
 	scene.add( skyBox );
 }
 
-var skinnedMesh;
-function loadModel() {
-	var loader = new THREE.JSONLoader;
-	var animation;
-
-	loader.load('./model.js', function (geometry, materials) {
-		skinnedMesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials));
-		skinnedMesh.position.y = 50;
-		skinnedMesh.scale.set(15, 15, 15);
-		skinnedMesh.name = "model";
-		scene.add(skinnedMesh);
-
-		animate(skinnedMesh);
-	});
-}
-
 var line;
 function render() {
 	// console.log("render");
@@ -108,8 +99,9 @@ function render() {
 	if (!RIFT) controls.update();
 	requestAnimationFrame(render);
 
+	monster.update();
+	TWEEN.update();
 
-	// if (clickInfo) {
 	if (clickInfo.userHasClicked) {
 		clickInfo.userHasClicked = false;
 
@@ -177,21 +169,18 @@ function render() {
 		console.log("INTERSECTIONs "+intersects.length);
 
 		for (x = 0; x < intersects.length; x++){
-			console.log(intersects[x].object);
-			intersects[x].object.material.color.r = 1;
+			console.log(x +" : ",intersects[x].object);
+			// intersects[x].object.material.color.r = 1;
+			intersects[x].object.control.kill();
 			// enemyContainer.remove(intersects[x].object);
-
 			score += 10;
 	    }
-		
 	}
-
 
 	$( "#front" ).html( "SCORE "+score )
 	
-// }
-	riftCam.render(scene, camera); 
-	// renderer.render(scene, camera);
+	if (RIFT) riftCam.render(scene, camera); 
+	else renderer.render(scene, camera);
 
 }
 
@@ -203,7 +192,6 @@ function addStats(displayContainer) {
 	stats.domElement.style.zIndex = 100;
 	displayContainer.appendChild( stats.domElement );
 }
-
 
 var debugLine;
 function drawDebugLine(start, end) {
@@ -242,12 +230,10 @@ document.body.addEventListener('click', function (evt) {
 }, false);
 
 
-document.body.addEventListener('keydown', function (evt) {
-	console.log("onkeydown");
-
-	clickInfo.userHasClicked = true;
-
-}, false);
+// document.body.addEventListener('keydown', function (evt) {
+// 	console.log("onkeydown");
+// 	clickInfo.userHasClicked = true;
+// }, false);
 
 var scene, camera, renderer;
 function initThree() {
@@ -305,7 +291,6 @@ function AddCrossHair() {
 		scene.add(crossHair)
 		// cameraContainer.add(camera);
 		// camera.add(crossHair);
-
 		// camera.position.set(0,0,100)
 
 	} else {
@@ -315,23 +300,89 @@ function AddCrossHair() {
 
 ////////////////////////////////////
 // model loading
-function loadModel(modelLocation){
-	//load the model
-	var jsonLoader = new THREE.JSONLoader();
-	// jsonLoader.load( "model/factory.js", addModelToScene );
-	jsonLoader.load( modelLocation, addModelToScene );
-}
-var environment;
-function addModelToScene( geometry, materials ) 
-{
-	console.log(geometry);
-	console.log(materials);
-	var material = new THREE.MeshFaceMaterial( materials );
-	environment = new THREE.Mesh(geometry, material );
-	environment.scale.set(1,1,1);
-	scene.add( environment );
-}
+// function loadModel(modelLocation){
+// 	//load the model
+// 	var jsonLoader = new THREE.JSONLoader();
+// 	jsonLoader.load( modelLocation, addModelToScene );
+// }
 
+// // var prevTime = Date.now();
+// var steve, animation;
+// var MESH_SCALE = 10;
+// function addModelToScene( geometry, materials ) 
+// {
+// 	var mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x606060, morphTargets: true } ) );
+// 	mesh.scale.set(MESH_SCALE, MESH_SCALE, MESH_SCALE);
+// 	scene.add( mesh );
+
+// 	animation = new THREE.MorphAnimation( mesh );
+// 	animation.play();
+// 	mesh.position.set(0,0,-200);
+
+// 	// tweenMonster(mesh);
+// 	return ;
+
+
+// 	// console.log("geometry "+geometry);
+// 	// console.log(materials);
+	 
+// 	// var material = new THREE.MeshFaceMaterial( materials );
+// 	// material.morphTargets = true;
+// 	// steve = new THREE.Mesh(geometry, material );
+// 	// steve.scale.set(.1,.1,.1);
+	
+// 	// scene.add( steve );
+// }
+
+// function tweenMonster(tweenTarget) {
+// 	console.log(tweenTarget)
+// 	var actualZPos= tweenTarget.position.z;
+// 	var currentZPos = { zPos: tweenTarget.position.z };
+// 	var targetZPos
+
+//      tween = new TWEEN.Tween(currentZPos)
+//       .to(targetZPos, 1000)
+//       .onUpdate(function() {
+//         // Calculate the difference between current frame number and where we want to be:
+//         var difference = Math.abs(currentZPos.zPos - actualZPos);
+//         actualZPos = currentZPos.zPos;
+//         // console.log("TWEEN");
+//         // Moving in -Z direction:
+//         tweenTarget.translateZ(-difference);
+//       }).start();
+// }
+// function handleComplete() {
+//     //Tween complete
+// }
+
+
+var skinnedMesh;
+// function loadModel() {
+// 	var loader = new THREE.JSONLoader;
+// 	var animation;
+
+// 	loader.load('./model.js', function (geometry, materials) {
+// 		skinnedMesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials));
+// 		skinnedMesh.position.y = 50;
+// 		skinnedMesh.scale.set(15, 15, 15);
+// 		skinnedMesh.name = "model";
+// 		scene.add(skinnedMesh);
+
+// 		animate(skinnedMesh);
+// 	});
+// }
+function animate(skinnedMesh) {
+    var materials = skinnedMesh.material.materials;
+ 
+    for (var k in materials) {
+        materials[k].skinning = true;
+        console.log("materials[k] "+materials[k]);
+    }
+ 
+    THREE.AnimationHandler.add(skinnedMesh.geometry.animation);
+    animation = new THREE.Animation(skinnedMesh, "ArmatureAction", THREE.AnimationHandler.CATMULLROM);
+    animation.play();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////
 function makeTextSprite( message, parameters )
