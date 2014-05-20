@@ -1,8 +1,4 @@
 ////////////////////////////////////
-
-var clickInfo = {};
-clickInfo.userHasClicked = false;
-var score = 0;
 var riftCam;
 var RIFT = true;
 var monster;
@@ -42,7 +38,7 @@ function init() {
 	var light = new THREE.AmbientLight( 0xffffff, 10 );
 	scene.add( light );
 	
-	loadModel("model/steve3d/steve.js")
+	loadModel("model/steve3d/steve.js");
 
 	render();
 }
